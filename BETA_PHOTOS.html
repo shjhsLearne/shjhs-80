@@ -47,14 +47,14 @@
 
     <!-- 主畫面區域 -->
     <main class="flex-1 flex flex-col h-full bg-gray-50 overflow-hidden w-full">
-        <!-- 頂部導覽列 (最佳化手機版排版) -->
+        <!-- 頂部導覽列 (特別為手機版增加安全左右與上方空間) -->
         <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-3 sm:px-6 flex-shrink-0 z-10 gap-2">
             <div class="flex items-center gap-2 flex-1 min-w-0">
-                <!-- 漢堡選單按鈕 -->
-                <button onclick="toggleSidebar()" class="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition flex-shrink-0" title="切換選單">
+                <!-- 漢堡選單按鈕：增加 ml-1 確保左側有完美留白，絕不被切掉 -->
+                <button onclick="toggleSidebar()" class="p-2 ml-1 text-gray-600 hover:bg-gray-100 rounded-full transition flex-shrink-0" title="切換選單">
                     <span class="material-icons">menu</span>
                 </button>
-                <!-- 搜尋框自動延展 -->
+                <!-- 搜尋框 -->
                 <div class="flex items-center flex-1 bg-gray-100 rounded-full px-3 sm:px-4 py-2 min-w-0">
                     <span class="material-icons text-gray-500 mr-2 text-sm md:text-base flex-shrink-0">search</span>
                     <input type="text" id="search-input" placeholder="搜尋相片..." class="bg-transparent border-none outline-none w-full text-sm text-gray-700 truncate" oninput="handleSearch()">
