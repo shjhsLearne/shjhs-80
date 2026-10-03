@@ -256,7 +256,7 @@
                                 <span id="like-icon-${file.id}" class="material-icons ${hasLiked ? 'text-red-500' : 'text-gray-400'} text-sm">${hasLiked ? 'favorite' : 'favorite_border'}</span>
                                 <span id="like-count-${file.id}">${likesCount}</span>
                             </button>
-                            <!-- 手機版優化下載觸發函式 -->
+                            <!-- 下載按鈕 (綁定全新升級的 handleDownload) -->
                             <button onclick="handleDownload('${file.fullUrl}', '${file.name}')" class="p-1.5 bg-white/90 hover:bg-white text-gray-800 rounded-full shadow transition backdrop-blur-sm" title="下載原圖">
                                 <span class="material-icons text-sm block">download</span>
                             </button>
@@ -279,23 +279,34 @@
             });
         }
 
-        // 手機與電腦通用的穩健下載函式
+        // 升級版下載功能：支援手機原生彈出「儲存影像」選單
         async function handleDownload(url, filename) {
             try {
-                // 嘗試抓取圖片的二進位資料以觸發強制下載
+                // 1. 先將 Google Drive 的圖片轉為二進位檔案實體
                 const response = await fetch(url);
                 const blob = await response.blob();
-                const blobUrl = window.URL.createObjectURL(blob);
-                
-                const a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = filename || 'download.jpg';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(blobUrl);
+                const file = new File([blob], filename || 'photo.jpg', { type: blob.type || 'image/jpeg' });
+
+                // 2. 判斷如果是手機環境，呼叫作業系統的原生分享機制 (可以直接存入相簿)
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: filename,
+                    });
+                } else {
+                    // 3. 電腦版環境，則使用傳統自動下載
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = filename || 'photo.jpg';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(blobUrl);
+                }
             } catch (err) {
-                // 如果遇到跨域限制，則退回直接在新分頁開啟高畫質圖片供長按儲存
+                // 若受到嚴格瀏覽器阻擋，跳出提示並開新視窗供手動儲存
+                alert('為保護您的相簿隱私，手機瀏覽器需請您在即將開啟的圖片上「長按」並選擇「儲存圖片」。');
                 window.open(url, '_blank');
             }
         }
