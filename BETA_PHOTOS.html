@@ -12,18 +12,31 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* 瀑布流欄位設定 */
-        .photo-masonry {
-            column-count: 2;
-            column-gap: 12px;
+        /* 穩定的多欄瀑布流排版：確保所有分頁（首頁、資料夾、最受歡迎）皆保持一致的生動美感與絕對不位移 */
+        .stable-masonry-container {
+            display: flex;
+            gap: 12px;
+            width: 100%;
         }
-        @media (min-width: 640px) { .photo-masonry { column-count: 3; } }
-        @media (min-width: 768px) { .photo-masonry { column-count: 4; } }
-        @media (min-width: 1024px) { .photo-masonry { column-count: 5; } }
+        .masonry-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 0;
+        }
 
-        .photo-card {
-            break-inside: avoid;
-            margin-bottom: 12px;
+        @media (min-width: 640px) { 
+            .stable-masonry-container { gap: 16px; } 
+            .masonry-column { gap: 16px; }
+        }
+        @media (min-width: 1024px) { 
+            .stable-masonry-container { gap: 20px; } 
+            .masonry-column { gap: 20px; }
+        }
+        @media (min-width: 1280px) { 
+            .stable-masonry-container { gap: 24px; } 
+            .masonry-column { gap: 24px; }
         }
     </style>
 </head>
@@ -34,6 +47,7 @@
 
     <!-- 側邊欄 -->
     <aside id="sidebar" class="w-72 flex-shrink-0 flex flex-col border-r border-gray-200 p-4 select-none bg-white fixed md:static inset-y-0 left-0 z-30 transform -translate-x-full md:translate-x-0 transition-all duration-300 overflow-hidden shadow-xl md:shadow-none">
+        <!-- Logo 與標題及收合按鈕 -->
         <div class="flex items-center justify-between px-2 mb-6 min-w-[250px]">
             <div class="flex items-center gap-3">
                 <img src="https://lh3.googleusercontent.com/d/13oP5AHjeYAC7eOud7dizpkiV-hxzlGUL=s400" alt="Logo" class="w-10 h-10 rounded-full object-cover flex-shrink-0 shadow-sm border border-gray-100">
@@ -42,21 +56,28 @@
                     <p class="text-xs text-blue-600 font-medium">歷年畢業紀念冊集錦</p>
                 </div>
             </div>
-            <!-- 電腦版收合按鈕 -->
+            <!-- 電腦版：專屬收合按鈕 -->
             <button onclick="toggleSidebar()" class="hidden md:flex p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="收合選單">
                 <span class="material-icons text-xl">menu_open</span>
             </button>
+        </div>
+
+        <!-- 搜尋框 -->
+        <div class="px-2 mb-6">
+            <div class="flex items-center w-full bg-gray-100 rounded-full px-4 py-2 shadow-inner border border-gray-50">
+                <span class="material-icons text-gray-500 mr-2 text-sm flex-shrink-0">search</span>
+                <input type="text" id="search-input" placeholder="搜尋相片..." class="bg-transparent border-none outline-none w-full text-sm text-gray-700 truncate" oninput="handleSearch()">
+            </div>
         </div>
 
         <!-- 導覽與資料夾選單區 -->
         <div class="flex-1 overflow-y-auto space-y-1 pr-1 min-w-[250px]">
             <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">相簿選單</p>
             <div id="folder-list" class="space-y-1">
-                <button onclick="filterPhotosByFolder('all')" id="btn-all" class="w-full flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-full font-medium text-sm transition text-left">
+                <button onclick="filterPhotosByFolder('all', '全部相片')" id="btn-all" class="w-full flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-full font-medium text-sm transition text-left">
                     <span class="material-icons text-blue-600">photo_library</span>全部相片
                 </button>
-                <!-- AI 產生的熱門相片集專區 -->
-                <button onclick="filterPhotosByFolder('ai-popular')" id="btn-ai-popular" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-full text-sm transition text-left">
+                <button onclick="filterPhotosByFolder('ai-popular', '✨ 最受歡迎校慶回憶')" id="btn-ai-popular" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-full text-sm transition text-left">
                     <span class="material-icons text-blue-500">thumb_up</span>✨ 最受歡迎校慶回憶
                 </button>
             </div>
@@ -66,37 +87,44 @@
     <!-- 主畫面區域 -->
     <main class="flex-1 flex flex-col h-full bg-gray-50 overflow-hidden w-full">
         <!-- 頂部導覽列 -->
-        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-3 sm:px-6 flex-shrink-0 z-10 gap-2">
-            <div class="flex items-center gap-2 flex-1 min-w-0">
-                <button onclick="toggleSidebar()" class="p-2 ml-1 text-gray-600 hover:bg-gray-100 rounded-full transition flex-shrink-0" title="切換選單">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-3 sm:px-6 flex-shrink-0 z-10 gap-4">
+            
+            <!-- 左側：展開按鈕 -->
+            <div class="flex items-center">
+                <button id="header-menu-btn" onclick="toggleSidebar()" class="p-2 md:hidden text-gray-600 hover:bg-gray-100 rounded-full transition flex-shrink-0" title="展開選單">
                     <span class="material-icons">menu</span>
                 </button>
-                <div class="flex items-center flex-1 bg-gray-100 rounded-full px-3 sm:px-4 py-2 min-w-0">
-                    <span class="material-icons text-gray-500 mr-2 text-sm md:text-base flex-shrink-0">search</span>
-                    <input type="text" id="search-input" placeholder="搜尋相片..." class="bg-transparent border-none outline-none w-full text-sm text-gray-700 truncate" oninput="handleSearch()">
-                </div>
             </div>
-            <div class="flex items-center gap-3 flex-shrink-0">
-                <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium hidden sm:inline-block">已連線至雲端資料庫</span>
+
+            <div class="hidden md:block flex-1"></div>
+
+            <!-- 右側：連線狀態 -->
+            <div class="flex items-center flex-shrink-0">
+                <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium hidden sm:inline-block shadow-sm border border-green-200">
+                    <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>已連線至雲端資料庫
+                </span>
             </div>
+            
         </header>
 
         <!-- 內容捲動區 -->
-        <div class="flex-1 overflow-y-auto p-3 sm:p-6" id="scroll-container">
-            <div class="max-w-7xl mx-auto">
-                <h2 id="current-category-title" class="text-sm font-semibold text-gray-500 mb-4 tracking-wider uppercase">全部相片</h2>
+        <div class="flex-1 overflow-y-auto p-3 sm:p-6" id="scroll-container" onscroll="handleScroll(event)">
+            <div class="w-full transition-all duration-300">
+                <h2 id="current-category-title" class="text-sm font-semibold text-gray-500 mb-6 tracking-wider uppercase">全部相片</h2>
                 
                 <!-- 載入中狀態提示 -->
                 <div id="loading" class="flex flex-col items-center justify-center py-20">
                     <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
-                    <p class="text-gray-500 text-sm">正在從雲端硬碟載入精彩相簿中...</p>
+                    <p class="text-gray-500 text-sm">正在載入相簿...</p>
                 </div>
 
-                <!-- 錯誤訊息提示 -->
-                <div id="error-box" class="hidden bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm mb-4"></div>
+                <!-- 穩定瀑布流容器 (內部由 JS 動態建立直欄) -->
+                <div id="photo-grid" class="stable-masonry-container"></div>
 
-                <!-- 瀑布流圖片容器 -->
-                <div id="photo-grid" class="photo-masonry"></div>
+                <!-- 底部載入更多轉圈提示 -->
+                <div id="load-more-spinner" class="hidden flex justify-center items-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
             </div>
         </div>
     </main>
@@ -111,27 +139,36 @@
     <script>
         const API_KEY = "AIzaSyDOrQTECe6vXorg18AY82z4RYQuawIr9sQ";
         const ROOT_FOLDER_ID = "1abJxVWMe4b0Mpq6TTKD3ztSod0-06aQj";
+        const DB_URL = "https://script.google.com/macros/s/AKfycbw86-rm7pTC3SFfYCuWTvKphvNHxrIB3IDOXKWh7Gyfy6pv2JFRSLgE-Tr2Ji9B1AQF/exec";
 
-        let allPhotos = [];
+        let currentPhotos = [];
         let foldersMap = {};
         let currentActiveFolderId = 'all';
+        let currentActiveFolderName = '全部相片';
 
-        let likesCountData = JSON.parse(localStorage.getItem('shjhs_likes_count') || '{}');
+        let displayedCount = 0;
+        const PAGE_SIZE = 30;
+
+        let likesCountData = {};
         let userLikedSet = new Set(JSON.parse(localStorage.getItem('shjhs_user_liked') || '[]'));
+        let isLikeLoading = {};
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
+            const headerBtn = document.getElementById('header-menu-btn');
             
             if (window.innerWidth >= 768) {
-                if (sidebar.style.width === '0px' || sidebar.classList.contains('collapsed')) {
-                    sidebar.style.width = '288px';
-                    sidebar.classList.remove('collapsed', 'p-0', 'border-none');
+                if (sidebar.classList.contains('w-0')) {
+                    sidebar.classList.replace('w-0', 'w-72');
+                    sidebar.classList.remove('p-0', 'border-none');
                     sidebar.classList.add('p-4', 'border-r');
+                    headerBtn.classList.add('md:hidden');
                 } else {
-                    sidebar.style.width = '0px';
-                    sidebar.classList.add('collapsed', 'p-0', 'border-none');
+                    sidebar.classList.replace('w-72', 'w-0');
+                    sidebar.classList.add('p-0', 'border-none');
                     sidebar.classList.remove('p-4', 'border-r');
+                    headerBtn.classList.remove('md:hidden');
                 }
             } else {
                 sidebar.classList.toggle('-translate-x-full');
@@ -139,110 +176,251 @@
             }
         }
 
-        async function fetchDriveData(folderId, currentFolderName = "根目錄") {
-            let results = { photos: [], subFolders: [] };
+        async function fetchTopLevelFolders() {
             try {
-                const query = `'${folderId}' in parents and trashed = false`;
-                const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&key=${API_KEY}&fields=files(id,name,mimeType,thumbnailLink)`;
-                
+                const query = `'${ROOT_FOLDER_ID}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+                const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&key=${API_KEY}&fields=files(id,name)`;
                 const response = await fetch(url);
                 const data = await response.json();
-
-                if (data.error) return results;
-
-                const items = data.files || [];
-
-                for (const item of items) {
-                    if (item.mimeType === 'application/vnd.google-apps.folder') {
-                        foldersMap[item.id] = item.name;
-                        results.subFolders.push(item);
-                    } else if (item.mimeType && item.mimeType.startsWith('image/')) {
-                        results.photos.push({
-                            id: item.id,
-                            name: item.name,
-                            folderId: folderId,
-                            folderName: currentFolderName,
-                            thumbUrl: item.thumbnailLink ? item.thumbnailLink.replace(/=s220/, '=s600') : '',
-                            fullUrl: item.thumbnailLink ? item.thumbnailLink.replace(/=s220/, '=s1600') : ''
-                        });
-                    }
+                
+                if (data.files) {
+                    data.files.forEach(f => {
+                        foldersMap[f.id] = f.name;
+                    });
                 }
+                renderFolderList();
+            } catch (err) {
+                console.error("Fetch Folders Error:", err);
+                renderFolderList();
+            }
+        }
 
-                for (const sub of results.subFolders) {
-                    const subResult = await fetchDriveData(sub.id, sub.name);
-                    results.photos = results.photos.concat(subResult.photos);
+        async function fetchPhotosInFolder(folderId, folderName) {
+            let photos = [];
+            try {
+                const query = `'${folderId}' in parents and mimeType contains 'image/' and trashed = false`;
+                const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&key=${API_KEY}&pageSize=200&fields=files(id,name,mimeType,thumbnailLink)`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.files) {
+                    photos = data.files.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        folderId: folderId,
+                        folderName: folderName,
+                        thumbUrl: item.thumbnailLink ? item.thumbnailLink.replace(/=s220/, '=s600') : '',
+                        fullUrl: item.thumbnailLink ? item.thumbnailLink.replace(/=s220/, '=s1600') : ''
+                    }));
                 }
             } catch (err) {
-                console.error(err);
+                console.error("Fetch Photos Error:", err);
             }
-            return results;
+            return photos;
+        }
+
+        async function fetchAllSubFolderPhotos() {
+            let all = [];
+            for (const [folderId, folderName] of Object.entries(foldersMap)) {
+                const folderPhotos = await fetchPhotosInFolder(folderId, folderName);
+                all = all.concat(folderPhotos);
+            }
+            return all;
+        }
+
+        async function fetchLikesData() {
+            try {
+                const response = await fetch(`${DB_URL}?action=getLikes`);
+                const data = await response.json();
+                return data;
+            } catch (err) {
+                console.error("Database fetch error:", err);
+                return {};
+            }
         }
 
         async function initPhotoGallery() {
             const loading = document.getElementById('loading');
-            const errorBox = document.getElementById('error-box');
 
             try {
-                const result = await fetchDriveData(ROOT_FOLDER_ID);
-                allPhotos = result.photos;
+                await fetchTopLevelFolders();
+
+                const [likesResult, initialPhotos] = await Promise.all([
+                    fetchLikesData(),
+                    fetchAllSubFolderPhotos()
+                ]);
+
+                likesCountData = likesResult;
+                window.allCachedPhotos = shuffleArray(initialPhotos);
+
                 loading.remove();
-
-                if (allPhotos.length === 0) {
-                    errorBox.textContent = "找不到任何圖片，請確認雲端硬碟資料夾權限是否正確。";
-                    errorBox.classList.remove('hidden');
-                    return;
-                }
-
-                const folderListContainer = document.getElementById('folder-list');
-                for (const [folderId, folderName] of Object.entries(foldersMap)) {
-                    const btn = document.createElement('button');
-                    btn.className = "w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-full text-sm transition text-left truncate";
-                    btn.id = `btn-${folderId}`;
-                    btn.innerHTML = `<span class="material-icons text-gray-400">folder</span><span class="truncate">${folderName}</span>`;
-                    btn.onclick = () => {
-                        filterPhotosByFolder(folderId, folderName);
-                        if (window.innerWidth < 768) toggleSidebar();
-                    };
-                    folderListContainer.appendChild(btn);
-                }
-
-                renderPhotos(allPhotos);
+                
+                currentPhotos = window.allCachedPhotos;
+                displayedCount = 0;
+                initMasonryGrid();
+                appendMorePhotos();
 
             } catch (err) {
                 loading.remove();
-                errorBox.textContent = "載入失敗：" + err.message;
-                errorBox.classList.remove('hidden');
+                console.error(err);
             }
         }
 
-        function renderPhotos(photosToRender) {
-            const grid = document.getElementById('photo-grid');
+        function renderFolderList() {
+            const folderListContainer = document.getElementById('folder-list');
             
-            if (photosToRender.length === 0) {
+            const allBtnActive = currentActiveFolderId === 'all';
+            const popularBtnActive = currentActiveFolderId === 'ai-popular';
+
+            let html = `
+                <button onclick="filterPhotosByFolder('all', '全部相片')" id="btn-all" class="w-full flex items-center gap-3 px-4 py-3 ${allBtnActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'} rounded-full text-sm transition text-left">
+                    <span class="material-icons ${allBtnActive ? 'text-blue-600' : 'text-gray-400'}">photo_library</span>全部相片
+                </button>
+                <button onclick="filterPhotosByFolder('ai-popular', '✨ 最受歡迎校慶回憶')" id="btn-ai-popular" class="w-full flex items-center gap-3 px-4 py-3 ${popularBtnActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'} rounded-full text-sm transition text-left">
+                    <span class="material-icons ${popularBtnActive ? 'text-blue-600' : 'text-blue-500'}">thumb_up</span>✨ 最受歡迎校慶回憶
+                </button>
+            `;
+
+            for (const [folderId, folderName] of Object.entries(foldersMap)) {
+                const isActive = currentActiveFolderId === folderId;
+                html += `
+                    <button onclick="filterPhotosByFolder('${folderId}', '${folderName}')" id="btn-${folderId}" class="w-full flex items-center gap-3 px-4 py-3 ${isActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'} rounded-full text-sm transition text-left truncate">
+                        <span class="material-icons ${isActive ? 'text-blue-600' : 'text-gray-400'}">folder</span><span class="truncate">${folderName}</span>
+                    </button>
+                `;
+            }
+
+            folderListContainer.innerHTML = html;
+        }
+
+        function shuffleArray(array) {
+            let arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        async function filterPhotosByFolder(folderId, folderName) {
+            currentActiveFolderId = folderId;
+            currentActiveFolderName = folderName;
+            document.getElementById('search-input').value = '';
+            renderFolderList();
+            document.getElementById('scroll-container').scrollTop = 0;
+
+            const titleEl = document.getElementById('current-category-title');
+            
+            if (folderId === 'ai-popular') {
+                titleEl.classList.add('hidden');
+                currentPhotos = [...window.allCachedPhotos]
+                    .filter(p => (likesCountData[p.id] || 0) > 0)
+                    .sort((a, b) => (likesCountData[b.id] || 0) - (likesCountData[a.id] || 0));
+            } else if (folderId === 'all') {
+                titleEl.textContent = folderName;
+                titleEl.classList.remove('hidden');
+                currentPhotos = window.allCachedPhotos;
+            } else {
+                titleEl.textContent = folderName;
+                titleEl.classList.remove('hidden');
+                // 直接從快取中過濾該資料夾的照片（秒切換，不需重新發 API）
+                currentPhotos = window.allCachedPhotos.filter(p => p.folderId === folderId);
+            }
+
+            displayedCount = 0;
+            initMasonryGrid();
+            appendMorePhotos();
+        }
+
+        function handleSearch() {
+            const rawKeyword = document.getElementById('search-input').value;
+            const keyword = rawKeyword.toLowerCase().trim();
+            const titleEl = document.getElementById('current-category-title');
+
+            if (!window.allCachedPhotos) return;
+
+            if (keyword !== '') {
+                currentPhotos = window.allCachedPhotos.filter(p => p.name.toLowerCase().includes(keyword));
+                titleEl.textContent = `正在搜尋「${rawKeyword.trim()}」相關聯的相片`;
+                titleEl.classList.remove('hidden');
+            } else {
+                if (currentActiveFolderId === 'ai-popular') {
+                    titleEl.classList.add('hidden');
+                } else {
+                    titleEl.textContent = currentActiveFolderName;
+                    titleEl.classList.remove('hidden');
+                }
+                currentPhotos = currentActiveFolderId === 'all' ? window.allCachedPhotos : window.allCachedPhotos.filter(p => p.folderId === currentActiveFolderId);
+            }
+
+            displayedCount = 0;
+            initMasonryGrid();
+            appendMorePhotos();
+        }
+
+        function getColumnCount() {
+            const w = window.innerWidth;
+            if (w >= 1280) return 6;
+            if (w >= 1024) return 5;
+            if (w >= 768) return 4;
+            if (w >= 640) return 3;
+            return 2;
+        }
+
+        function initMasonryGrid() {
+            const grid = document.getElementById('photo-grid');
+            grid.innerHTML = '';
+            grid.className = "stable-masonry-container";
+            const cols = getColumnCount();
+            for (let i = 0; i < cols; i++) {
+                const colDiv = document.createElement('div');
+                colDiv.className = 'masonry-column';
+                colDiv.id = `masonry-col-${i}`;
+                grid.appendChild(colDiv);
+            }
+        }
+
+        function appendMorePhotos() {
+            const spinner = document.getElementById('load-more-spinner');
+
+            if (currentPhotos.length === 0) {
+                const grid = document.getElementById('photo-grid');
+                grid.innerHTML = '';
                 grid.className = "w-full flex flex-col items-center justify-center py-24 text-center";
-                
                 if (currentActiveFolderId === 'ai-popular') {
                     grid.innerHTML = `
                         <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 max-w-md mx-auto flex flex-col items-center">
                             <span class="material-icons text-blue-500 text-5xl mb-3 animate-bounce">thumb_up</span>
                             <p class="text-gray-800 font-bold text-base mb-1">目前還沒有人為相片點贊喔！</p>
-                            <p class="text-gray-400 text-sm">快去瀏覽其他相片，為喜歡的回憶按下愛心吧 ❤️</p>
+                            <p class="text-gray-400 text-sm">快去瀏覽其他相片，為喜歡的回憶按下愛心吧 ❤️️</p>
                         </div>`;
                 } else {
-                    grid.innerHTML = `<p class="text-gray-400 text-sm py-10">沒有找到符合的相片</p>`;
+                    grid.innerHTML = `<p class="text-gray-400 text-sm py-10">此資料夾目前沒有相片</p>`;
                 }
+                spinner.classList.add('hidden');
                 return;
             }
 
-            grid.className = "photo-masonry";
-            grid.innerHTML = '';
+            const nextBatch = currentPhotos.slice(displayedCount, displayedCount + PAGE_SIZE);
+            if (nextBatch.length === 0) {
+                spinner.classList.add('hidden');
+                return;
+            }
 
-            photosToRender.forEach(file => {
+            const cols = getColumnCount();
+
+            nextBatch.forEach((file, index) => {
+                const targetColIndex = (displayedCount + index) % cols;
+                const colEl = document.getElementById(`masonry-col-${targetColIndex}`);
+                if (!colEl) return;
+
                 const likesCount = likesCountData[file.id] || 0;
                 const hasLiked = userLikedSet.has(file.id);
+                const btnLoadingClass = isLikeLoading[file.id] ? 'opacity-50 pointer-events-none' : '';
 
                 const card = document.createElement('div');
-                card.className = "photo-card relative group bg-white rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100";
+                // 恢復自然的圖片比例與自適應高度（不強制置中、不固定高度）
+                card.className = "relative group bg-white rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 mb-3 sm:mb-4";
                 
                 card.innerHTML = `
                     <img src="${file.thumbUrl}" alt="${file.name}" class="w-full h-auto object-cover group-hover:scale-102 transition duration-300" loading="lazy">
@@ -251,11 +429,10 @@
                         <span class="text-white text-xs truncate drop-shadow">${file.name}</span>
                         
                         <div class="flex items-center justify-end gap-1.5" onclick="event.stopPropagation()">
-                            <button id="like-btn-${file.id}" onclick="handleLike('${file.id}')" class="flex items-center gap-1 ${hasLiked ? 'bg-red-50 text-red-600' : 'bg-white/90 text-gray-800 hover:bg-white'} px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm">
+                            <button id="like-btn-${file.id}" onclick="handleLike('${file.id}')" class="flex items-center gap-1 ${hasLiked ? 'bg-red-50 text-red-600' : 'bg-white/90 text-gray-800 hover:bg-white'} px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm ${btnLoadingClass}">
                                 <span id="like-icon-${file.id}" class="material-icons ${hasLiked ? 'text-red-500' : 'text-gray-400'} text-sm">${hasLiked ? 'favorite' : 'favorite_border'}</span>
                                 <span id="like-count-${file.id}">${likesCount}</span>
                             </button>
-                            <!-- 下載按鈕 -->
                             <button onclick="handleDownload('${file.fullUrl}', '${file.name}')" class="p-1.5 bg-white/90 hover:bg-white text-gray-800 rounded-full shadow transition backdrop-blur-sm" title="下載原圖">
                                 <span class="material-icons text-sm block">download</span>
                             </button>
@@ -274,34 +451,50 @@
                     modal.classList.add('flex');
                 });
 
-                grid.appendChild(card);
+                colEl.appendChild(card);
             });
+
+            displayedCount += nextBatch.length;
+
+            if (displayedCount < currentPhotos.length) {
+                spinner.classList.remove('hidden');
+            } else {
+                spinner.classList.add('hidden');
+            }
         }
 
-        // 終極修復版：確保 iOS / Android 彈出選單有「儲存影像」按鈕
+        function handleScroll(e) {
+            const container = e.target;
+            if (container.scrollTop + container.clientHeight >= container.scrollHeight - 400) {
+                if (displayedCount < currentPhotos.length) {
+                    if (!window.isFetchingMore) {
+                        window.isFetchingMore = true;
+                        setTimeout(() => {
+                            appendMorePhotos();
+                            window.isFetchingMore = false;
+                        }, 100);
+                    }
+                }
+            }
+        }
+
         async function handleDownload(url, filename) {
             try {
-                // 1. 強制確保檔名有 .jpg 結尾，這是手機系統辨識「這是一張照片」的關鍵
                 let safeFilename = filename || 'shjhs-photo.jpg';
                 if (!safeFilename.toLowerCase().endsWith('.jpg') && !safeFilename.toLowerCase().endsWith('.png')) {
                     safeFilename += '.jpg';
                 }
 
-                // 2. 抓取圖片資料
                 const response = await fetch(url);
                 const blob = await response.blob();
-                
-                // 3. 嚴格宣告這是一個 image/jpeg 檔案
                 const file = new File([blob], safeFilename, { type: 'image/jpeg' });
 
-                // 4. 呼叫手機原生的分享/儲存介面
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         files: [file],
                         title: safeFilename
                     });
                 } else {
-                    // 電腦版或不支援的手機瀏覽器，直接執行下載
                     const blobUrl = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = blobUrl;
@@ -312,30 +505,55 @@
                     window.URL.revokeObjectURL(blobUrl);
                 }
             } catch (err) {
-                // 如果遇到極少數瀏覽器防護機制阻擋，則採用最後的備用方案
                 alert('為保護隱私，系統即將為您開啟高畫質相片。請在相片上「長按」並選擇「儲存到照片/相簿」即可下載！');
                 window.open(url, '_blank');
             }
         }
 
         function handleLike(fileId) {
-            if (userLikedSet.has(fileId)) {
-                userLikedSet.delete(fileId);
-                likesCountData[fileId] = Math.max(0, (likesCountData[fileId] || 1) - 1);
-            } else {
+            if (isLikeLoading[fileId]) return;
+
+            const isLiking = !userLikedSet.has(fileId);
+            const action = isLiking ? 'like' : 'unlike';
+
+            isLikeLoading[fileId] = true;
+
+            if (isLiking) {
                 userLikedSet.add(fileId);
                 likesCountData[fileId] = (likesCountData[fileId] || 0) + 1;
+            } else {
+                userLikedSet.delete(fileId);
+                likesCountData[fileId] = Math.max(0, (likesCountData[fileId] || 1) - 1);
+            }
+            localStorage.setItem('shjhs_user_liked', JSON.stringify(Array.from(userLikedSet)));
+            
+            updateLikeUI(fileId);
+
+            if (currentActiveFolderId === 'ai-popular') {
+                filterPhotosByFolder('ai-popular', '✨ 最受歡迎校慶回憶');
             }
 
-            localStorage.setItem('shjhs_likes_count', JSON.stringify(likesCountData));
-            localStorage.setItem('shjhs_user_liked', JSON.stringify(Array.from(userLikedSet)));
+            fetch(`${DB_URL}?action=${action}&photoId=${encodeURIComponent(fileId)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.success) {
+                        likesCountData[fileId] = data.likes;
+                    }
+                })
+                .catch(err => console.error("同步讚數失敗", err))
+                .finally(() => {
+                    isLikeLoading[fileId] = false;
+                    updateLikeUI(fileId);
+                });
+        }
 
+        function updateLikeUI(fileId) {
             const hasLiked = userLikedSet.has(fileId);
             const btn = document.getElementById(`like-btn-${fileId}`);
             const icon = document.getElementById(`like-icon-${fileId}`);
             const countSpan = document.getElementById(`like-count-${fileId}`);
 
-            if (countSpan) countSpan.textContent = likesCountData[fileId];
+            if (countSpan) countSpan.textContent = likesCountData[fileId] || 0;
             if (btn && icon) {
                 if (hasLiked) {
                     btn.className = "flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm";
@@ -346,10 +564,10 @@
                     icon.textContent = "favorite_border";
                     icon.className = "material-icons text-gray-400 text-sm";
                 }
-            }
 
-            if (currentActiveFolderId === 'ai-popular') {
-                applyFilters();
+                if (isLikeLoading[fileId]) {
+                    btn.classList.add('opacity-50', 'pointer-events-none');
+                }
             }
         }
 
@@ -364,56 +582,6 @@
                 navigator.clipboard.writeText(url);
                 alert('已複製相片連結！');
             }
-        }
-
-        function filterPhotosByFolder(folderId, folderName = "全部相片") {
-            currentActiveFolderId = folderId;
-            document.getElementById('current-category-title').textContent = folderName;
-            document.getElementById('search-input').value = '';
-
-            document.querySelectorAll('#folder-list button').forEach(btn => {
-                btn.className = "w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-full text-sm transition text-left truncate";
-                const icon = btn.querySelector('.material-icons');
-                if (icon) {
-                    if (btn.id === 'btn-ai-popular') icon.className = "material-icons text-blue-500";
-                    else icon.className = "material-icons text-gray-400";
-                }
-            });
-
-            const activeBtn = document.getElementById(folderId === 'all' ? 'btn-all' : (folderId === 'ai-popular' ? 'btn-ai-popular' : `btn-${folderId}`));
-            if (activeBtn) {
-                activeBtn.className = "w-full flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-full font-medium text-sm transition text-left truncate";
-                const icon = activeBtn.querySelector('.material-icons');
-                if (icon) icon.className = "material-icons text-blue-600";
-            }
-
-            applyFilters();
-        }
-
-        function handleSearch() {
-            applyFilters();
-        }
-
-        function applyFilters() {
-            const keyword = document.getElementById('search-input').value.toLowerCase().trim();
-
-            let result = [];
-            if (currentActiveFolderId === 'all') {
-                result = allPhotos;
-            } else if (currentActiveFolderId === 'ai-popular') {
-                result = [...allPhotos]
-                    .filter(p => (likesCountData[p.id] || 0) > 0)
-                    .sort((a, b) => (likesCountData[b.id] || 0) - (likesCountData[a.id] || 0))
-                    .slice(0, 10);
-            } else {
-                result = allPhotos.filter(p => p.folderId === currentActiveFolderId);
-            }
-
-            if (keyword !== '') {
-                result = result.filter(p => p.name.toLowerCase().includes(keyword));
-            }
-
-            renderPhotos(result);
         }
 
         function closeModal(event) {
