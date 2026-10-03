@@ -55,7 +55,7 @@
                 <button onclick="filterPhotosByFolder('all')" id="btn-all" class="w-full flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-full font-medium text-sm transition text-left">
                     <span class="material-icons text-blue-600">photo_library</span>全部相片
                 </button>
-                <!-- AI 產生的熱門相片集專區（圖示改為可愛的讚 thumb_up） -->
+                <!-- AI 產生的熱門相片集專區 -->
                 <button onclick="filterPhotosByFolder('ai-popular')" id="btn-ai-popular" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-full text-sm transition text-left">
                     <span class="material-icons text-blue-500">thumb_up</span>✨ 最受歡迎校慶回憶
                 </button>
@@ -256,9 +256,10 @@
                                 <span id="like-icon-${file.id}" class="material-icons ${hasLiked ? 'text-red-500' : 'text-gray-400'} text-sm">${hasLiked ? 'favorite' : 'favorite_border'}</span>
                                 <span id="like-count-${file.id}">${likesCount}</span>
                             </button>
-                            <a href="${file.fullUrl}" download target="_blank" class="p-1.5 bg-white/90 hover:bg-white text-gray-800 rounded-full shadow transition backdrop-blur-sm" title="下載原圖">
+                            <!-- 手機版優化下載觸發函式 -->
+                            <button onclick="handleDownload('${file.fullUrl}', '${file.name}')" class="p-1.5 bg-white/90 hover:bg-white text-gray-800 rounded-full shadow transition backdrop-blur-sm" title="下載原圖">
                                 <span class="material-icons text-sm block">download</span>
-                            </a>
+                            </button>
                             <button onclick="handleShare('${file.fullUrl}', '${file.name}')" class="p-1.5 bg-white/90 hover:bg-white text-gray-800 rounded-full shadow transition backdrop-blur-sm" title="分享連結">
                                 <span class="material-icons text-sm block">share</span>
                             </button>
@@ -276,6 +277,27 @@
 
                 grid.appendChild(card);
             });
+        }
+
+        // 手機與電腦通用的穩健下載函式
+        async function handleDownload(url, filename) {
+            try {
+                // 嘗試抓取圖片的二進位資料以觸發強制下載
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename || 'download.jpg';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+            } catch (err) {
+                // 如果遇到跨域限制，則退回直接在新分頁開啟高畫質圖片供長按儲存
+                window.open(url, '_blank');
+            }
         }
 
         function handleLike(fileId) {
