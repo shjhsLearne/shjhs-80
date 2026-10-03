@@ -8,11 +8,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Google Fonts: 懷舊復古襯線字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        body {
+            font-family: 'Noto Serif TC', serif, sans-serif;
+        }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* 穩定的多欄瀑布流排版：確保所有分頁（首頁、資料夾、最受歡迎）皆保持一致的生動美感與絕對不位移 */
+        /* 穩定的多欄瀑布流排版 */
         .stable-masonry-container {
             display: flex;
             gap: 12px;
@@ -38,60 +43,76 @@
             .stable-masonry-container { gap: 24px; } 
             .masonry-column { gap: 24px; }
         }
+
+        /* 1.5秒停留微放大預覽效果 */
+        .photo-card-preview {
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.5s ease;
+            transform-origin: center center;
+            will-change: transform;
+        }
+        .photo-card-preview.preview-zoom {
+            transform: scale(1.45);
+            z-index: 50;
+            box-shadow: 0 35px 60px -15px rgba(0, 0, 0, 0.45);
+        }
+
+        /* 圖片自由拖曳縮放容器 */
+        #modal-img-container {
+            cursor: grab;
+            transform-origin: 0 0;
+        }
+        #modal-img-container:active {
+            cursor: grabbing;
+        }
     </style>
 </head>
-<body class="bg-white text-gray-800 flex h-screen overflow-hidden">
+<body class="bg-[#F4EFE6] text-[#4A4033] flex h-screen overflow-hidden">
 
     <!-- 手機/平板側邊欄背後的半透明遮罩 -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-20 hidden md:hidden transition-opacity" onclick="toggleSidebar()"></div>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/40 z-20 hidden md:hidden transition-opacity" onclick="toggleSidebar()"></div>
 
-    <!-- 側邊欄 -->
-    <aside id="sidebar" class="w-72 flex-shrink-0 flex flex-col border-r border-gray-200 p-4 select-none bg-white fixed md:static inset-y-0 left-0 z-30 transform -translate-x-full md:translate-x-0 transition-all duration-300 overflow-hidden shadow-xl md:shadow-none">
+    <!-- 側邊欄 (懷舊米白與復古棕調) -->
+    <aside id="sidebar" class="w-72 flex-shrink-0 flex flex-col border-r border-[#E2DAC9] p-4 select-none bg-[#EFEAD9] fixed md:static inset-y-0 left-0 z-30 transform -translate-x-full md:translate-x-0 transition-all duration-300 overflow-hidden shadow-xl md:shadow-none">
         <!-- Logo 與標題及收合按鈕 -->
         <div class="flex items-center justify-between px-2 mb-6 min-w-[250px]">
             <div class="flex items-center gap-3">
-                <img src="https://lh3.googleusercontent.com/d/13oP5AHjeYAC7eOud7dizpkiV-hxzlGUL=s400" alt="Logo" class="w-10 h-10 rounded-full object-cover flex-shrink-0 shadow-sm border border-gray-100">
+                <img src="https://lh3.googleusercontent.com/d/13oP5AHjeYAC7eOud7dizpkiV-hxzlGUL=s400" alt="Logo" class="w-10 h-10 rounded-full object-cover flex-shrink-0 shadow-sm border border-[#D5CBB8]">
                 <div>
-                    <h1 class="text-sm font-bold text-gray-800 leading-tight">三峽國中</h1>
-                    <p class="text-xs text-blue-600 font-medium">歷年畢業紀念冊集錦</p>
+                    <h1 class="text-sm font-bold text-[#3B3024] tracking-wider leading-tight">三峽國中</h1>
+                    <p class="text-xs text-[#8C6D53] font-medium tracking-widest">畢業紀念冊集錦</p>
                 </div>
             </div>
             <!-- 電腦版：專屬收合按鈕 -->
-            <button onclick="toggleSidebar()" class="hidden md:flex p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition" title="收合選單">
+            <button onclick="toggleSidebar()" class="hidden md:flex p-1.5 text-[#6B5B4B] hover:bg-[#E5DEC9] rounded-lg transition" title="收合選單">
                 <span class="material-icons text-xl">menu_open</span>
             </button>
         </div>
 
-        <!-- 搜尋框 -->
+        <!-- 復古搜尋框 -->
         <div class="px-2 mb-6">
-            <div class="flex items-center w-full bg-gray-100 rounded-full px-4 py-2 shadow-inner border border-gray-50">
-                <span class="material-icons text-gray-500 mr-2 text-sm flex-shrink-0">search</span>
-                <input type="text" id="search-input" placeholder="搜尋相片..." class="bg-transparent border-none outline-none w-full text-sm text-gray-700 truncate" oninput="handleSearch()">
+            <div class="flex items-center w-full bg-[#E5DEC9] rounded-full px-4 py-2 shadow-inner border border-[#D7CEBB]">
+                <span class="material-icons text-[#8C6D53] mr-2 text-sm flex-shrink-0">search</span>
+                <input type="text" id="search-input" placeholder="尋找記憶中的身影..." class="bg-transparent border-none outline-none w-full text-sm text-[#4A4033] placeholder-[#9E907E] truncate" oninput="handleSearch()">
             </div>
         </div>
 
         <!-- 導覽與資料夾選單區 -->
-        <div class="flex-1 overflow-y-auto space-y-1 pr-1 min-w-[250px]">
-            <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">相簿選單</p>
-            <div id="folder-list" class="space-y-1">
-                <button onclick="filterPhotosByFolder('all', '全部相片')" id="btn-all" class="w-full flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-full font-medium text-sm transition text-left">
-                    <span class="material-icons text-blue-600">photo_library</span>全部相片
-                </button>
-                <button onclick="filterPhotosByFolder('ai-popular', '✨ 最受歡迎校慶回憶')" id="btn-ai-popular" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-full text-sm transition text-left">
-                    <span class="material-icons text-blue-500">thumb_up</span>✨ 最受歡迎校慶回憶
-                </button>
+        <div class="flex-1 overflow-y-auto space-y-1.5 pr-1 min-w-[250px]">
+            <p class="px-4 text-xs font-semibold text-[#8C6D53] uppercase tracking-wider mb-2">相簿選單</p>
+            <div id="folder-list" class="space-y-1.5">
+                <!-- 動態產生的選單 -->
             </div>
         </div>
     </aside>
 
     <!-- 主畫面區域 -->
-    <main class="flex-1 flex flex-col h-full bg-gray-50 overflow-hidden w-full">
+    <main class="flex-1 flex flex-col h-full bg-[#F4EFE6] overflow-hidden w-full">
         <!-- 頂部導覽列 -->
-        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-3 sm:px-6 flex-shrink-0 z-10 gap-4">
+        <header class="h-16 bg-[#EFEAD9] border-b border-[#E2DAC9] flex items-center justify-between px-3 sm:px-6 flex-shrink-0 z-10 gap-4">
             
             <!-- 左側：展開按鈕 -->
             <div class="flex items-center">
-                <button id="header-menu-btn" onclick="toggleSidebar()" class="p-2 md:hidden text-gray-600 hover:bg-gray-100 rounded-full transition flex-shrink-0" title="展開選單">
+                <button id="header-menu-btn" onclick="toggleSidebar()" class="p-2 md:hidden text-[#6B5B4B] hover:bg-[#E5DEC9] rounded-full transition flex-shrink-0" title="展開選單">
                     <span class="material-icons">menu</span>
                 </button>
             </div>
@@ -100,39 +121,67 @@
 
             <!-- 右側：連線狀態 -->
             <div class="flex items-center flex-shrink-0">
-                <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium hidden sm:inline-block shadow-sm border border-green-200">
-                    <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>已連線至雲端資料庫
+                <span class="text-xs bg-[#E5DEC9] text-[#4A3B2C] px-3.5 py-1.5 rounded-full font-medium hidden sm:inline-block shadow-sm border border-[#D7CEBB]">
+                    <span class="inline-block w-2 h-2 bg-[#8C6D53] rounded-full mr-1.5 animate-pulse"></span>時光資料庫已連線
                 </span>
             </div>
             
         </header>
 
         <!-- 內容捲動區 -->
-        <div class="flex-1 overflow-y-auto p-3 sm:p-6" id="scroll-container" onscroll="handleScroll(event)">
+        <div class="flex-1 overflow-y-auto p-4 sm:p-8 relative bg-[#F4EFE6]" id="scroll-container" onscroll="handleScroll(event)">
             <div class="w-full transition-all duration-300">
-                <h2 id="current-category-title" class="text-sm font-semibold text-gray-500 mb-6 tracking-wider uppercase">全部相片</h2>
+                <h2 id="current-category-title" class="text-xs font-semibold text-[#8C6D53] mb-6 tracking-widest uppercase">全部相片</h2>
                 
-                <!-- 載入中狀態提示 -->
-                <div id="loading" class="flex flex-col items-center justify-center py-20">
-                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
-                    <p class="text-gray-500 text-sm">正在載入相簿...</p>
+                <!-- 置中自訂載入動畫與溫馨提示 -->
+                <div id="loading" class="flex flex-col items-center justify-center py-32 w-full">
+                    <div class="relative flex items-center justify-center mb-6">
+                        <div class="animate-spin rounded-full h-14 w-14 border-4 border-[#E5DEC9] border-t-[#8C6D53]"></div>
+                        <span class="absolute material-icons text-[#8C6D53] text-xl animate-pulse">auto_stories</span>
+                    </div>
+                    <p class="text-[#4A4033] font-semibold text-base tracking-wide mb-1">線上人數眾多...</p>
+                    <p class="text-[#8C6D53] text-sm tracking-wider">請耐心等候,照片即將載入完成</p>
                 </div>
 
-                <!-- 穩定瀑布流容器 (內部由 JS 動態建立直欄) -->
+                <!-- 穩定瀑布流容器 -->
                 <div id="photo-grid" class="stable-masonry-container"></div>
 
                 <!-- 底部載入更多轉圈提示 -->
                 <div id="load-more-spinner" class="hidden flex justify-center items-center py-8">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8C6D53]"></div>
                 </div>
             </div>
         </div>
     </main>
 
     <!-- 圖片放大預覽 Modal -->
-    <div id="modal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50 p-4 cursor-zoom-out" onclick="closeModal(event)">
-        <div class="relative max-w-full max-h-[90vh]" onclick="event.stopPropagation()">
-            <img id="modal-img" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl">
+    <div id="modal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-center justify-center z-50 overflow-hidden" onclick="closeModal(event)">
+        <!-- 關閉按鈕 -->
+        <button onclick="closeModal(event)" class="absolute top-4 right-4 z-50 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition">
+            <span class="material-icons text-2xl">close</span>
+        </button>
+
+        <!-- 圖片縮放與拖曳容器 -->
+        <div id="modal-img-container" class="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center" onclick="event.stopPropagation()">
+            <img id="modal-img" class="max-w-[85vw] max-h-[85vh] object-contain rounded-xl shadow-2xl select-none pointer-events-none">
+            
+            <!-- 右下角懸浮工具列 (按讚、下載、分享) -->
+            <div id="modal-toolbar" class="absolute bottom-4 right-4 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-2 rounded-full shadow-2xl border border-white/10" onclick="event.stopPropagation()">
+                <!-- 按讚按鈕 -->
+                <button id="modal-like-btn" onclick="handleModalLike()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition text-white hover:bg-white/10">
+                    <span id="modal-like-icon" class="material-icons text-sm">favorite_border</span>
+                    <span id="modal-like-count">0</span>
+                </button>
+                <div class="w-[1px] h-4 bg-white/20"></div>
+                <!-- 下載按鈕 -->
+                <button id="modal-download-btn" class="p-1.5 hover:bg-white/10 text-white rounded-full transition" title="下載原圖">
+                    <span class="material-icons text-sm block">download</span>
+                </button>
+                <!-- 分享按鈕 -->
+                <button id="modal-share-btn" class="p-1.5 hover:bg-white/10 text-white rounded-full transition" title="分享連結">
+                    <span class="material-icons text-sm block">share</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -152,6 +201,14 @@
         let likesCountData = {};
         let userLikedSet = new Set(JSON.parse(localStorage.getItem('shjhs_user_liked') || '[]'));
         let isLikeLoading = {};
+        let currentModalPhotoId = null;
+
+        // 縮放與平移變數
+        let scale = 1;
+        let pointX = 0;
+        let pointY = 0;
+        let isDragging = false;
+        let startX = 0, startY = 0;
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -272,20 +329,23 @@
             const allBtnActive = currentActiveFolderId === 'all';
             const popularBtnActive = currentActiveFolderId === 'ai-popular';
 
+            const activeClass = "bg-[#D9CEBA] text-[#3B3024] font-bold shadow-sm border-2 border-[#8C6D53]";
+            const normalClass = "text-[#6B5B4B] hover:bg-[#E5DEC9] font-normal border-2 border-transparent";
+
             let html = `
-                <button onclick="filterPhotosByFolder('all', '全部相片')" id="btn-all" class="w-full flex items-center gap-3 px-4 py-3 ${allBtnActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'} rounded-full text-sm transition text-left">
-                    <span class="material-icons ${allBtnActive ? 'text-blue-600' : 'text-gray-400'}">photo_library</span>全部相片
+                <button onclick="filterPhotosByFolder('all', '全部相片')" id="btn-all" class="w-full flex items-center gap-3 px-4 py-3 ${allBtnActive ? activeClass : normalClass} rounded-full text-sm transition text-left">
+                    <span class="material-icons ${allBtnActive ? 'text-[#7A5C43]' : 'text-[#9E907E]'}">photo_library</span>全部相片
                 </button>
-                <button onclick="filterPhotosByFolder('ai-popular', '✨ 最受歡迎校慶回憶')" id="btn-ai-popular" class="w-full flex items-center gap-3 px-4 py-3 ${popularBtnActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'} rounded-full text-sm transition text-left">
-                    <span class="material-icons ${popularBtnActive ? 'text-blue-600' : 'text-blue-500'}">thumb_up</span>✨ 最受歡迎校慶回憶
+                <button onclick="filterPhotosByFolder('ai-popular', '✨ 最受歡迎校慶回憶')" id="btn-ai-popular" class="w-full flex items-center gap-3 px-4 py-3 ${popularBtnActive ? activeClass : normalClass} rounded-full text-sm transition text-left">
+                    <span class="material-icons ${popularBtnActive ? 'text-[#7A5C43]' : 'text-[#B8860B]'}">thumb_up</span>✨ 最受歡迎校慶回憶
                 </button>
             `;
 
             for (const [folderId, folderName] of Object.entries(foldersMap)) {
                 const isActive = currentActiveFolderId === folderId;
                 html += `
-                    <button onclick="filterPhotosByFolder('${folderId}', '${folderName}')" id="btn-${folderId}" class="w-full flex items-center gap-3 px-4 py-3 ${isActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'} rounded-full text-sm transition text-left truncate">
-                        <span class="material-icons ${isActive ? 'text-blue-600' : 'text-gray-400'}">folder</span><span class="truncate">${folderName}</span>
+                    <button onclick="filterPhotosByFolder('${folderId}', '${folderName}')" id="btn-${folderId}" class="w-full flex items-center gap-3 px-4 py-3 ${isActive ? activeClass : normalClass} rounded-full text-sm transition text-left truncate">
+                        <span class="material-icons ${isActive ? 'text-[#7A5C43]' : 'text-[#9E907E]'}">folder</span><span class="truncate">${folderName}</span>
                     </button>
                 `;
             }
@@ -323,7 +383,6 @@
             } else {
                 titleEl.textContent = folderName;
                 titleEl.classList.remove('hidden');
-                // 直接從快取中過濾該資料夾的照片（秒切換，不需重新發 API）
                 currentPhotos = window.allCachedPhotos.filter(p => p.folderId === folderId);
             }
 
@@ -389,13 +448,13 @@
                 grid.className = "w-full flex flex-col items-center justify-center py-24 text-center";
                 if (currentActiveFolderId === 'ai-popular') {
                     grid.innerHTML = `
-                        <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 max-w-md mx-auto flex flex-col items-center">
-                            <span class="material-icons text-blue-500 text-5xl mb-3 animate-bounce">thumb_up</span>
-                            <p class="text-gray-800 font-bold text-base mb-1">目前還沒有人為相片點贊喔！</p>
-                            <p class="text-gray-400 text-sm">快去瀏覽其他相片，為喜歡的回憶按下愛心吧 ❤️️</p>
+                        <div class="bg-[#EFEAD9] border border-[#E2DAC9] p-8 rounded-3xl shadow-sm max-w-md mx-auto flex flex-col items-center">
+                            <span class="material-icons text-[#8C6D53] text-5xl mb-3 animate-bounce">thumb_up</span>
+                            <p class="text-[#4A4033] font-bold text-base mb-1">目前還沒有人為相片點贊喔！</p>
+                            <p class="text-[#8C6D53] text-sm">快去瀏覽其他相片，為喜歡的回憶按下愛心吧 ❤️</p>
                         </div>`;
                 } else {
-                    grid.innerHTML = `<p class="text-gray-400 text-sm py-10">此資料夾目前沒有相片</p>`;
+                    grid.innerHTML = `<p class="text-[#8C6D53] text-sm py-10">此資料夾目前沒有相片</p>`;
                 }
                 spinner.classList.add('hidden');
                 return;
@@ -419,34 +478,65 @@
                 const btnLoadingClass = isLikeLoading[file.id] ? 'opacity-50 pointer-events-none' : '';
 
                 const card = document.createElement('div');
-                // 恢復自然的圖片比例與自適應高度（不強制置中、不固定高度）
-                card.className = "relative group bg-white rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 mb-3 sm:mb-4";
+                card.className = "photo-card-preview relative group bg-[#FAF7F0] rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl border border-[#E2DAC9] mb-3 sm:mb-4";
                 
                 card.innerHTML = `
-                    <img src="${file.thumbUrl}" alt="${file.name}" class="w-full h-auto object-cover group-hover:scale-102 transition duration-300" loading="lazy">
+                    <img src="${file.thumbUrl}" alt="${file.name}" class="w-full h-auto object-cover transition duration-300" loading="lazy">
                     
                     <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
                         <span class="text-white text-xs truncate drop-shadow">${file.name}</span>
                         
                         <div class="flex items-center justify-end gap-1.5" onclick="event.stopPropagation()">
-                            <button id="like-btn-${file.id}" onclick="handleLike('${file.id}')" class="flex items-center gap-1 ${hasLiked ? 'bg-red-50 text-red-600' : 'bg-white/90 text-gray-800 hover:bg-white'} px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm ${btnLoadingClass}">
-                                <span id="like-icon-${file.id}" class="material-icons ${hasLiked ? 'text-red-500' : 'text-gray-400'} text-sm">${hasLiked ? 'favorite' : 'favorite_border'}</span>
+                            <button id="like-btn-${file.id}" onclick="handleLike('${file.id}')" class="flex items-center gap-1 ${hasLiked ? 'bg-[#FDF2F2] text-[#B91C1C]' : 'bg-white/95 text-[#4A4033] hover:bg-white'} px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm ${btnLoadingClass}">
+                                <span id="like-icon-${file.id}" class="material-icons ${hasLiked ? 'text-[#EF4444]' : 'text-[#8C6D53]'} text-sm">${hasLiked ? 'favorite' : 'favorite_border'}</span>
                                 <span id="like-count-${file.id}">${likesCount}</span>
                             </button>
-                            <button onclick="handleDownload('${file.fullUrl}', '${file.name}')" class="p-1.5 bg-white/90 hover:bg-white text-gray-800 rounded-full shadow transition backdrop-blur-sm" title="下載原圖">
+                            <button onclick="handleDownload('${file.fullUrl}', '${file.name}')" class="p-1.5 bg-white/95 hover:bg-white text-[#4A4033] rounded-full shadow transition backdrop-blur-sm" title="下載原圖">
                                 <span class="material-icons text-sm block">download</span>
                             </button>
-                            <button onclick="handleShare('${file.fullUrl}', '${file.name}')" class="p-1.5 bg-white/90 hover:bg-white text-gray-800 rounded-full shadow transition backdrop-blur-sm" title="分享連結">
+                            <button onclick="handleShare('${file.fullUrl}', '${file.name}')" class="p-1.5 bg-white/95 hover:bg-white text-[#4A4033] rounded-full shadow transition backdrop-blur-sm" title="分享連結">
                                 <span class="material-icons text-sm block">share</span>
                             </button>
                         </div>
                     </div>
                 `;
 
+                // 滑鼠懸停 1.5 秒預覽放大功能
+                let hoverTimer = null;
+                card.addEventListener('mouseenter', () => {
+                    hoverTimer = setTimeout(() => {
+                        card.classList.add('preview-zoom');
+                    }, 1500);
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    if (hoverTimer) clearTimeout(hoverTimer);
+                    card.classList.remove('preview-zoom');
+                });
+
+                // 點擊開啟大圖 Modal
                 card.addEventListener('click', () => {
+                    if (hoverTimer) clearTimeout(hoverTimer);
+                    card.classList.remove('preview-zoom');
+
+                    currentModalPhotoId = file.id;
                     const modal = document.getElementById('modal');
                     const modalImg = document.getElementById('modal-img');
                     modalImg.src = file.fullUrl;
+
+                    // 初始化縮放與平移位置
+                    scale = 1;
+                    pointX = 0;
+                    pointY = 0;
+                    updateModalTransform();
+
+                    // 更新 Modal 工具列的按讚數與圖示
+                    updateModalToolbar(file.id);
+
+                    // 綁定 Modal 內的下載與分享事件
+                    document.getElementById('modal-download-btn').onclick = () => handleDownload(file.fullUrl, file.name);
+                    document.getElementById('modal-share-btn').onclick = () => handleShare(file.fullUrl, file.name);
+
                     modal.classList.remove('hidden');
                     modal.classList.add('flex');
                 });
@@ -463,6 +553,114 @@
             }
         }
 
+        // 智慧判斷下載行為：電腦版直接下載，行動版先跳提示
+        async function handleDownload(url, filename) {
+            const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+            if (isMobileDevice) {
+                const confirmed = confirm('為保護隱私，系統即將為您開啟高畫質相片。\n請在相片上「長按」並選擇「儲存到照片/相簿」即可下載！');
+                if (confirmed) {
+                    window.open(url, '_blank');
+                }
+            } else {
+                try {
+                    let safeFilename = filename || 'shjhs-photo.jpg';
+                    if (!safeFilename.toLowerCase().endsWith('.jpg') && !safeFilename.toLowerCase().endsWith('.png')) {
+                        safeFilename += '.jpg';
+                    }
+
+                    const response = await fetch(url);
+                    const blob = await response.blob();
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = safeFilename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(blobUrl);
+                } catch (err) {
+                    window.open(url, '_blank');
+                }
+            }
+        }
+
+        // Modal 內圖片縮放與平移事件綁定
+        const modalImgContainer = document.getElementById('modal-img-container');
+
+        modalImgContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const xs = (e.clientX - pointX) / scale;
+            const ys = (e.clientY - pointY) / scale;
+            
+            if (e.deltaY < 0) {
+                scale *= 1.15;
+            } else {
+                scale /= 1.15;
+            }
+            scale = Math.max(1, Math.min(scale, 8)); // 限制縮放範圍 1x ~ 8x
+
+            if (scale === 1) {
+                pointX = 0;
+                pointY = 0;
+            } else {
+                pointX = e.clientX - xs * scale;
+                pointY = e.clientY - ys * scale;
+            }
+            updateModalTransform();
+        });
+
+        modalImgContainer.addEventListener('mousedown', (e) => {
+            if (scale > 1) {
+                isDragging = true;
+                startX = e.clientX - pointX;
+                startY = e.clientY - pointY;
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            pointX = e.clientX - startX;
+            pointY = e.clientY - startY;
+            updateModalTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        function updateModalTransform() {
+            modalImgContainer.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+        }
+
+        function updateModalToolbar(fileId) {
+            const hasLiked = userLikedSet.has(fileId);
+            const count = likesCountData[fileId] || 0;
+            const icon = document.getElementById('modal-like-icon');
+            const countSpan = document.getElementById('modal-like-count');
+            const btn = document.getElementById('modal-like-btn');
+
+            countSpan.textContent = count;
+            if (hasLiked) {
+                icon.textContent = 'favorite';
+                icon.className = 'material-icons text-red-500 text-sm';
+                btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition bg-red-500/20 text-red-300 border border-red-500/30';
+            } else {
+                icon.textContent = 'favorite_border';
+                icon.className = 'material-icons text-white text-sm';
+                btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition text-white hover:bg-white/10';
+            }
+        }
+
+        function handleModalLike() {
+            if (!currentModalPhotoId) return;
+            handleLike(currentModalPhotoId);
+            setTimeout(() => {
+                updateModalToolbar(currentModalPhotoId);
+            }, 50);
+        }
+
         function handleScroll(e) {
             const container = e.target;
             if (container.scrollTop + container.clientHeight >= container.scrollHeight - 400) {
@@ -475,38 +673,6 @@
                         }, 100);
                     }
                 }
-            }
-        }
-
-        async function handleDownload(url, filename) {
-            try {
-                let safeFilename = filename || 'shjhs-photo.jpg';
-                if (!safeFilename.toLowerCase().endsWith('.jpg') && !safeFilename.toLowerCase().endsWith('.png')) {
-                    safeFilename += '.jpg';
-                }
-
-                const response = await fetch(url);
-                const blob = await response.blob();
-                const file = new File([blob], safeFilename, { type: 'image/jpeg' });
-
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        files: [file],
-                        title: safeFilename
-                    });
-                } else {
-                    const blobUrl = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = blobUrl;
-                    a.download = safeFilename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(blobUrl);
-                }
-            } catch (err) {
-                alert('為保護隱私，系統即將為您開啟高畫質相片。請在相片上「長按」並選擇「儲存到照片/相簿」即可下載！');
-                window.open(url, '_blank');
             }
         }
 
@@ -528,6 +694,9 @@
             localStorage.setItem('shjhs_user_liked', JSON.stringify(Array.from(userLikedSet)));
             
             updateLikeUI(fileId);
+            if (fileId === currentModalPhotoId) {
+                updateModalToolbar(fileId);
+            }
 
             if (currentActiveFolderId === 'ai-popular') {
                 filterPhotosByFolder('ai-popular', '✨ 最受歡迎校慶回憶');
@@ -544,6 +713,9 @@
                 .finally(() => {
                     isLikeLoading[fileId] = false;
                     updateLikeUI(fileId);
+                    if (fileId === currentModalPhotoId) {
+                        updateModalToolbar(fileId);
+                    }
                 });
         }
 
@@ -556,13 +728,13 @@
             if (countSpan) countSpan.textContent = likesCountData[fileId] || 0;
             if (btn && icon) {
                 if (hasLiked) {
-                    btn.className = "flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm";
+                    btn.className = "flex items-center gap-1 bg-[#FDF2F2] text-[#B91C1C] px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm";
                     icon.textContent = "favorite";
-                    icon.className = "material-icons text-red-500 text-sm";
+                    icon.className = "material-icons text-[#EF4444] text-sm";
                 } else {
-                    btn.className = "flex items-center gap-1 bg-white/90 text-gray-800 hover:bg-white px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm";
+                    btn.className = "flex items-center gap-1 bg-white/95 text-[#4A4033] hover:bg-white px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm";
                     icon.textContent = "favorite_border";
-                    icon.className = "material-icons text-gray-400 text-sm";
+                    icon.className = "material-icons text-[#8C6D53] text-sm";
                 }
 
                 if (isLikeLoading[fileId]) {
@@ -588,6 +760,7 @@
             const modal = document.getElementById('modal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+            currentModalPhotoId = null;
         }
 
         window.addEventListener('DOMContentLoaded', initPhotoGallery);
