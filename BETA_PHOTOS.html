@@ -11,6 +11,20 @@
     <style>
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 瀑布流欄位設定 */
+        .photo-masonry {
+            column-count: 2;
+            column-gap: 12px;
+        }
+        @media (min-width: 640px) { .photo-masonry { column-count: 3; } }
+        @media (min-width: 768px) { .photo-masonry { column-count: 4; } }
+        @media (min-width: 1024px) { .photo-masonry { column-count: 5; } }
+
+        .photo-card {
+            break-inside: avoid;
+            margin-bottom: 12px;
+        }
     </style>
 </head>
 <body class="bg-white text-gray-800 flex h-screen overflow-hidden">
@@ -18,7 +32,7 @@
     <!-- 手機/平板側邊欄背後的半透明遮罩 -->
     <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-20 hidden md:hidden transition-opacity" onclick="toggleSidebar()"></div>
 
-    <!-- 側邊欄（支援響應式滑出與收合） -->
+    <!-- 側邊欄 -->
     <aside id="sidebar" class="w-72 flex-shrink-0 flex flex-col border-r border-gray-200 p-4 select-none bg-white fixed md:static inset-y-0 left-0 z-30 transform -translate-x-full md:translate-x-0 transition-all duration-300 overflow-hidden shadow-xl md:shadow-none">
         <div class="flex items-center justify-between px-2 mb-6 min-w-[250px]">
             <div class="flex items-center gap-3">
@@ -41,20 +55,22 @@
                 <button onclick="filterPhotosByFolder('all')" id="btn-all" class="w-full flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-full font-medium text-sm transition text-left">
                     <span class="material-icons text-blue-600">photo_library</span>全部相片
                 </button>
+                <!-- AI 產生的熱門相片集專區（圖示改為可愛的讚 thumb_up） -->
+                <button onclick="filterPhotosByFolder('ai-popular')" id="btn-ai-popular" class="w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-full text-sm transition text-left">
+                    <span class="material-icons text-blue-500">thumb_up</span>✨ 最受歡迎校慶回憶
+                </button>
             </div>
         </div>
     </aside>
 
     <!-- 主畫面區域 -->
     <main class="flex-1 flex flex-col h-full bg-gray-50 overflow-hidden w-full">
-        <!-- 頂部導覽列 (特別為手機版增加安全左右與上方空間) -->
+        <!-- 頂部導覽列 -->
         <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-3 sm:px-6 flex-shrink-0 z-10 gap-2">
             <div class="flex items-center gap-2 flex-1 min-w-0">
-                <!-- 漢堡選單按鈕：增加 ml-1 確保左側有完美留白，絕不被切掉 -->
                 <button onclick="toggleSidebar()" class="p-2 ml-1 text-gray-600 hover:bg-gray-100 rounded-full transition flex-shrink-0" title="切換選單">
                     <span class="material-icons">menu</span>
                 </button>
-                <!-- 搜尋框 -->
                 <div class="flex items-center flex-1 bg-gray-100 rounded-full px-3 sm:px-4 py-2 min-w-0">
                     <span class="material-icons text-gray-500 mr-2 text-sm md:text-base flex-shrink-0">search</span>
                     <input type="text" id="search-input" placeholder="搜尋相片..." class="bg-transparent border-none outline-none w-full text-sm text-gray-700 truncate" oninput="handleSearch()">
@@ -73,21 +89,23 @@
                 <!-- 載入中狀態提示 -->
                 <div id="loading" class="flex flex-col items-center justify-center py-20">
                     <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
-                    <p class="text-gray-500 text-sm">正在從雲端硬碟載入資料夾與相片中...</p>
+                    <p class="text-gray-500 text-sm">正在從雲端硬碟載入精彩相簿中...</p>
                 </div>
 
                 <!-- 錯誤訊息提示 -->
                 <div id="error-box" class="hidden bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm mb-4"></div>
 
-                <!-- RWD 圖片網格容器 -->
-                <div id="photo-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3"></div>
+                <!-- 瀑布流圖片容器 -->
+                <div id="photo-grid" class="photo-masonry"></div>
             </div>
         </div>
     </main>
 
     <!-- 圖片放大預覽 Modal -->
-    <div id="modal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50 p-4 cursor-zoom-out" onclick="closeModal()">
-        <img id="modal-img" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl">
+    <div id="modal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50 p-4 cursor-zoom-out" onclick="closeModal(event)">
+        <div class="relative max-w-full max-h-[90vh]" onclick="event.stopPropagation()">
+            <img id="modal-img" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl">
+        </div>
     </div>
 
     <script>
@@ -97,6 +115,9 @@
         let allPhotos = [];
         let foldersMap = {};
         let currentActiveFolderId = 'all';
+
+        let likesCountData = JSON.parse(localStorage.getItem('shjhs_likes_count') || '{}');
+        let userLikedSet = new Set(JSON.parse(localStorage.getItem('shjhs_user_liked') || '[]'));
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -141,7 +162,7 @@
                             name: item.name,
                             folderId: folderId,
                             folderName: currentFolderName,
-                            thumbUrl: item.thumbnailLink ? item.thumbnailLink.replace(/=s220/, '=s400') : '',
+                            thumbUrl: item.thumbnailLink ? item.thumbnailLink.replace(/=s220/, '=s600') : '',
                             fullUrl: item.thumbnailLink ? item.thumbnailLink.replace(/=s220/, '=s1600') : ''
                         });
                     }
@@ -196,20 +217,52 @@
 
         function renderPhotos(photosToRender) {
             const grid = document.getElementById('photo-grid');
-            grid.innerHTML = '';
-
+            
             if (photosToRender.length === 0) {
-                grid.innerHTML = `<p class="text-gray-400 text-sm col-span-full py-10 text-center">沒有找到符合的相片</p>`;
+                grid.className = "w-full flex flex-col items-center justify-center py-24 text-center";
+                
+                if (currentActiveFolderId === 'ai-popular') {
+                    grid.innerHTML = `
+                        <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 max-w-md mx-auto flex flex-col items-center">
+                            <span class="material-icons text-blue-500 text-5xl mb-3 animate-bounce">thumb_up</span>
+                            <p class="text-gray-800 font-bold text-base mb-1">目前還沒有人為相片點贊喔！</p>
+                            <p class="text-gray-400 text-sm">快去瀏覽其他相片，為喜歡的回憶按下愛心吧 ❤️</p>
+                        </div>`;
+                } else {
+                    grid.innerHTML = `<p class="text-gray-400 text-sm py-10">沒有找到符合的相片</p>`;
+                }
                 return;
             }
 
+            grid.className = "photo-masonry";
+            grid.innerHTML = '';
+
             photosToRender.forEach(file => {
+                const likesCount = likesCountData[file.id] || 0;
+                const hasLiked = userLikedSet.has(file.id);
+
                 const card = document.createElement('div');
-                card.className = "relative group aspect-square bg-gray-200 rounded-xl overflow-hidden cursor-pointer shadow-sm hover:shadow-md transition";
+                card.className = "photo-card relative group bg-white rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100";
+                
                 card.innerHTML = `
-                    <img src="${file.thumbUrl}" alt="${file.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent opacity-0 group-hover:opacity-100 transition flex items-end p-3">
-                        <span class="text-white text-xs truncate">${file.name}</span>
+                    <img src="${file.thumbUrl}" alt="${file.name}" class="w-full h-auto object-cover group-hover:scale-102 transition duration-300" loading="lazy">
+                    
+                    <!-- 漸層標題與右下角互動按鈕 -->
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
+                        <span class="text-white text-xs truncate drop-shadow">${file.name}</span>
+                        
+                        <div class="flex items-center justify-end gap-1.5" onclick="event.stopPropagation()">
+                            <button id="like-btn-${file.id}" onclick="handleLike('${file.id}')" class="flex items-center gap-1 ${hasLiked ? 'bg-red-50 text-red-600' : 'bg-white/90 text-gray-800 hover:bg-white'} px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm">
+                                <span id="like-icon-${file.id}" class="material-icons ${hasLiked ? 'text-red-500' : 'text-gray-400'} text-sm">${hasLiked ? 'favorite' : 'favorite_border'}</span>
+                                <span id="like-count-${file.id}">${likesCount}</span>
+                            </button>
+                            <a href="${file.fullUrl}" download target="_blank" class="p-1.5 bg-white/90 hover:bg-white text-gray-800 rounded-full shadow transition backdrop-blur-sm" title="下載原圖">
+                                <span class="material-icons text-sm block">download</span>
+                            </a>
+                            <button onclick="handleShare('${file.fullUrl}', '${file.name}')" class="p-1.5 bg-white/90 hover:bg-white text-gray-800 rounded-full shadow transition backdrop-blur-sm" title="分享連結">
+                                <span class="material-icons text-sm block">share</span>
+                            </button>
+                        </div>
                     </div>
                 `;
 
@@ -225,6 +278,54 @@
             });
         }
 
+        function handleLike(fileId) {
+            if (userLikedSet.has(fileId)) {
+                userLikedSet.delete(fileId);
+                likesCountData[fileId] = Math.max(0, (likesCountData[fileId] || 1) - 1);
+            } else {
+                userLikedSet.add(fileId);
+                likesCountData[fileId] = (likesCountData[fileId] || 0) + 1;
+            }
+
+            localStorage.setItem('shjhs_likes_count', JSON.stringify(likesCountData));
+            localStorage.setItem('shjhs_user_liked', JSON.stringify(Array.from(userLikedSet)));
+
+            const hasLiked = userLikedSet.has(fileId);
+            const btn = document.getElementById(`like-btn-${fileId}`);
+            const icon = document.getElementById(`like-icon-${fileId}`);
+            const countSpan = document.getElementById(`like-count-${fileId}`);
+
+            if (countSpan) countSpan.textContent = likesCountData[fileId];
+            if (btn && icon) {
+                if (hasLiked) {
+                    btn.className = "flex items-center gap-1 bg-red-50 text-red-600 px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm";
+                    icon.textContent = "favorite";
+                    icon.className = "material-icons text-red-500 text-sm";
+                } else {
+                    btn.className = "flex items-center gap-1 bg-white/90 text-gray-800 hover:bg-white px-2.5 py-1.5 rounded-full text-xs font-medium shadow transition backdrop-blur-sm";
+                    icon.textContent = "favorite_border";
+                    icon.className = "material-icons text-gray-400 text-sm";
+                }
+            }
+
+            if (currentActiveFolderId === 'ai-popular') {
+                applyFilters();
+            }
+        }
+
+        function handleShare(url, name) {
+            if (navigator.share) {
+                navigator.share({
+                    title: name,
+                    text: '三峽國中 80週年校慶回憶 - ' + name,
+                    url: url,
+                }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(url);
+                alert('已複製相片連結！');
+            }
+        }
+
         function filterPhotosByFolder(folderId, folderName = "全部相片") {
             currentActiveFolderId = folderId;
             document.getElementById('current-category-title').textContent = folderName;
@@ -233,10 +334,13 @@
             document.querySelectorAll('#folder-list button').forEach(btn => {
                 btn.className = "w-full flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-full text-sm transition text-left truncate";
                 const icon = btn.querySelector('.material-icons');
-                if (icon) icon.className = "material-icons text-gray-400";
+                if (icon) {
+                    if (btn.id === 'btn-ai-popular') icon.className = "material-icons text-blue-500";
+                    else icon.className = "material-icons text-gray-400";
+                }
             });
 
-            const activeBtn = document.getElementById(folderId === 'all' ? 'btn-all' : `btn-${folderId}`);
+            const activeBtn = document.getElementById(folderId === 'all' ? 'btn-all' : (folderId === 'ai-popular' ? 'btn-ai-popular' : `btn-${folderId}`));
             if (activeBtn) {
                 activeBtn.className = "w-full flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 rounded-full font-medium text-sm transition text-left truncate";
                 const icon = activeBtn.querySelector('.material-icons');
@@ -253,9 +357,17 @@
         function applyFilters() {
             const keyword = document.getElementById('search-input').value.toLowerCase().trim();
 
-            let result = currentActiveFolderId === 'all' 
-                ? allPhotos 
-                : allPhotos.filter(p => p.folderId === currentActiveFolderId);
+            let result = [];
+            if (currentActiveFolderId === 'all') {
+                result = allPhotos;
+            } else if (currentActiveFolderId === 'ai-popular') {
+                result = [...allPhotos]
+                    .filter(p => (likesCountData[p.id] || 0) > 0)
+                    .sort((a, b) => (likesCountData[b.id] || 0) - (likesCountData[a.id] || 0))
+                    .slice(0, 10);
+            } else {
+                result = allPhotos.filter(p => p.folderId === currentActiveFolderId);
+            }
 
             if (keyword !== '') {
                 result = result.filter(p => p.name.toLowerCase().includes(keyword));
@@ -264,7 +376,7 @@
             renderPhotos(result);
         }
 
-        function closeModal() {
+        function closeModal(event) {
             const modal = document.getElementById('modal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
