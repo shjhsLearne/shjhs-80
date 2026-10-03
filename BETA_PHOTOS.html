@@ -226,7 +226,7 @@
                         <div class="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 max-w-md mx-auto flex flex-col items-center">
                             <span class="material-icons text-blue-500 text-5xl mb-3 animate-bounce">thumb_up</span>
                             <p class="text-gray-800 font-bold text-base mb-1">目前還沒有人為相片點贊喔！</p>
-                            <p class="text-gray-400 text-sm">快去瀏覽其他相片，為喜歡的回憶按下愛心吧 ❤️</p>
+                            <p class="text-gray-400 text-sm">快去瀏覽其他相片，為喜歡的回憶按下愛心吧 ❤️️</p>
                         </div>`;
                 } else {
                     grid.innerHTML = `<p class="text-gray-400 text-sm py-10">沒有找到符合的相片</p>`;
@@ -247,7 +247,6 @@
                 card.innerHTML = `
                     <img src="${file.thumbUrl}" alt="${file.name}" class="w-full h-auto object-cover group-hover:scale-102 transition duration-300" loading="lazy">
                     
-                    <!-- 漸層標題與右下角互動按鈕 -->
                     <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
                         <span class="text-white text-xs truncate drop-shadow">${file.name}</span>
                         
@@ -256,7 +255,7 @@
                                 <span id="like-icon-${file.id}" class="material-icons ${hasLiked ? 'text-red-500' : 'text-gray-400'} text-sm">${hasLiked ? 'favorite' : 'favorite_border'}</span>
                                 <span id="like-count-${file.id}">${likesCount}</span>
                             </button>
-                            <!-- 下載按鈕 (綁定全新升級的 handleDownload) -->
+                            <!-- 下載按鈕 -->
                             <button onclick="handleDownload('${file.fullUrl}', '${file.name}')" class="p-1.5 bg-white/90 hover:bg-white text-gray-800 rounded-full shadow transition backdrop-blur-sm" title="下載原圖">
                                 <span class="material-icons text-sm block">download</span>
                             </button>
@@ -279,34 +278,42 @@
             });
         }
 
-        // 升級版下載功能：支援手機原生彈出「儲存影像」選單
+        // 終極修復版：確保 iOS / Android 彈出選單有「儲存影像」按鈕
         async function handleDownload(url, filename) {
             try {
-                // 1. 先將 Google Drive 的圖片轉為二進位檔案實體
+                // 1. 強制確保檔名有 .jpg 結尾，這是手機系統辨識「這是一張照片」的關鍵
+                let safeFilename = filename || 'shjhs-photo.jpg';
+                if (!safeFilename.toLowerCase().endsWith('.jpg') && !safeFilename.toLowerCase().endsWith('.png')) {
+                    safeFilename += '.jpg';
+                }
+
+                // 2. 抓取圖片資料
                 const response = await fetch(url);
                 const blob = await response.blob();
-                const file = new File([blob], filename || 'photo.jpg', { type: blob.type || 'image/jpeg' });
+                
+                // 3. 嚴格宣告這是一個 image/jpeg 檔案
+                const file = new File([blob], safeFilename, { type: 'image/jpeg' });
 
-                // 2. 判斷如果是手機環境，呼叫作業系統的原生分享機制 (可以直接存入相簿)
+                // 4. 呼叫手機原生的分享/儲存介面
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         files: [file],
-                        title: filename,
+                        title: safeFilename
                     });
                 } else {
-                    // 3. 電腦版環境，則使用傳統自動下載
+                    // 電腦版或不支援的手機瀏覽器，直接執行下載
                     const blobUrl = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = blobUrl;
-                    a.download = filename || 'photo.jpg';
+                    a.download = safeFilename;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
                     window.URL.revokeObjectURL(blobUrl);
                 }
             } catch (err) {
-                // 若受到嚴格瀏覽器阻擋，跳出提示並開新視窗供手動儲存
-                alert('為保護您的相簿隱私，手機瀏覽器需請您在即將開啟的圖片上「長按」並選擇「儲存圖片」。');
+                // 如果遇到極少數瀏覽器防護機制阻擋，則採用最後的備用方案
+                alert('為保護隱私，系統即將為您開啟高畫質相片。請在相片上「長按」並選擇「儲存到照片/相簿」即可下載！');
                 window.open(url, '_blank');
             }
         }
